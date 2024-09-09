@@ -1,0 +1,31 @@
+# Ignore Maven's build directory
+/target/
+
+# Ignore IntelliJ IDEA project files
+.idea/
+*.iml
+
+# Ignore Eclipse project files
+.project
+.classpath
+.settings/
+
+# Ignore VSCode settings
+.vscode/
+
+# Logs
+*.log
+
+# Maven Wrapper files
+.mvn/wrapper/maven-wrapper.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# OS-generated files
+.DS_Store
+Thumbs.db
+
+# Ignore compiled Java files
+*.class
+
+# Ignore environment variable files
+.env
