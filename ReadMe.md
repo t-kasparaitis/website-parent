@@ -16,6 +16,7 @@ This project is a multi-module Maven project that includes a Spring Boot back-en
     - Make sure to close all other programs before running the Node installer. This one fails if other stuff is running... Check it is installed afterwards with `node -v` & `npm -v`.
     - Install yarn via npm: `npm install --global yarn` and check it with `yarn -v`.
         - If there is an Execution Policy issue, run Powershell as Admin, then `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`.
+    - Install rimraf via npm: `npm install rimraf --save-dev`.
 
 ## Project Structure & Setup
 
@@ -67,12 +68,12 @@ After changes it should look like this (ChatGPT-generated):
     <url>http://maven.apache.org</url>
 
     <!-- Once these modules are created you can uncomment them: -->
-    <!--
     <modules>
+        <!-- React needs to build after Spring Boot since it builds to to src/main/resources/static.
+         Spring Boot App needs to build first since it cleans the static folder (deletes all files).-->
         <module>website-spring-boot-app</module>
         <module>website-react-app</module>
     </modules>
-    -->
 
     <!-- Manage dependencies for child modules -->
     <dependencyManagement>
@@ -80,7 +81,7 @@ After changes it should look like this (ChatGPT-generated):
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>2.5.4</version> <!-- You can use the latest version of Spring Boot -->
+                <version>3.3.3</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -91,20 +92,30 @@ After changes it should look like this (ChatGPT-generated):
       <java.version>21</java.version>
     </properties>
 
-
     <build>
         <pluginManagement>
             <plugins>
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
-                    <!-- Additional configurations for the Spring Boot Maven plugin can go here -->
+                    <version>3.3.3</version>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.8.1</version>
+                    <configuration>
+                        <source>21</source>
+                        <target>21</target>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
     </build>
 </project>
 ```
+
+Use `Ctrl + Shift + P` and type `Java: Configure Java Runtime`. Under `Compiler` checkmark `Use '--release' option for cross-compilation (Java 9 and later)` and choose 21 for `Bytecode version`.
 
 ### Creating `website-spring-boot-app`
 
@@ -141,72 +152,80 @@ Modify the `website-spring-boot-app` `pom.xml`. Below is the original:
 ```
 After changes it should look like this (ChatGPT-generated):
 ```
-<?xml version="1.0"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-  
-  <modelVersion>4.0.0</modelVersion>
-  
-  <!-- Inherit from the parent project -->
-  <parent>
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.tkasparaitis.website</groupId>
+        <artifactId>website-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
     <groupId>io.tkasparaitis.website</groupId>
-    <artifactId>website-parent</artifactId>
+    <artifactId>website-spring-boot-app</artifactId>
     <version>1.0-SNAPSHOT</version>
-  </parent>
-  
-  <groupId>io.tkasparaitis.website</groupId>
-  <artifactId>website-spring-boot-app</artifactId>
-  <version>1.0-SNAPSHOT</version>
-  <name>website-spring-boot-app</name>
-  <url>http://maven.apache.org</url>
+    <name>website-spring-boot-app</name>
+    <url>http://maven.apache.org</url>
 
-  <!-- Spring Boot and other dependencies -->
-  <dependencies>
-    <!-- Spring Boot Starter for building web applications -->
-    <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
 
-    <!-- WebJars locator for serving WebJars -->
-    <dependency>
-      <groupId>org.webjars</groupId>
-      <artifactId>webjars-locator</artifactId>
-    </dependency>
+        <!-- JUnit for unit testing -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.13.2</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
-    <!-- jQuery WebJar as an example -->
-    <dependency>
-      <groupId>org.webjars</groupId>
-      <artifactId>jquery</artifactId>
-      <version>3.5.1</version>
-    </dependency>
+    <build>
+        <resources>
+            <!-- Include React build output in Spring Boot's static resources -->
+            <resource>
+                <directory>../website-react-app/build</directory>
+                <targetPath>static/</targetPath>
+                <filtering>false</filtering>
+            </resource>
+        </resources>
 
-    <!-- JUnit for unit testing -->
-    <dependency>
-      <groupId>junit</groupId>
-      <artifactId>junit</artifactId>
-      <version>4.13.2</version>
-      <scope>test</scope>
-    </dependency>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
 
-    <!-- Add the React module as a dependency once it's created -->
-    <!-- <dependency>
-      <groupId>io.tkasparaitis.website</groupId>
-      <artifactId>website-react-app</artifactId>
-      <version>1.0-SNAPSHOT</version>
-    </dependency> -->
-  </dependencies>
+            <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-clean-plugin</artifactId>
+            <version>3.4.0</version>
+            <executions>
+                <execution>
+                    <id>clean-static-folder</id>
+                    <phase>pre-clean</phase>
+                    <goals>
+                        <goal>clean</goal>
+                    </goals>
+                    <configuration>
+                        <filesets>
+                            <fileset>
+                                <directory>${project.basedir}/src/main/resources/static</directory>
+                            </fileset>
+                        </filesets>
+                    </configuration>
+                </execution>
+            </executions>
+        </plugin>
 
-  <!-- Build configuration for Spring Boot -->
-  <build>
-    <plugins>
-      <plugin>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-maven-plugin</artifactId>
-      </plugin>
-    </plugins>
-  </build>
+        </plugins>
+    </build>
 
 </project>
 ```
@@ -227,5 +246,72 @@ Installation choices:
   - √ Would you like to use `src/` directory? ... No / `Yes`
   - √ Would you like to use App Router? (recommended) ... No / `Yes`
   - √ Would you like to customize the default import alias (@/*)? ... `No` / Yes
+
+Create a `pom.xml` in `website-react-app`:
+```
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>io.tkasparaitis.website</groupId>
+        <artifactId>website-parent</artifactId>
+        <version>1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <groupId>io.tkasparaitis.website</groupId>
+    <artifactId>website-react-app</artifactId>
+    <version>1.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+
+    <name>website-react-app</name>
+    <description>React front-end application for the website</description>
+
+    <build>
+        <plugins>
+            <!-- Use Exec Maven Plugin to handle NPM commands -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>3.0.0</version>
+                <executions>
+                    <!-- Run npm install -->
+                    <execution>
+                        <id>npm install</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>generate-resources</phase>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>install</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+
+                    <!-- Run npm build -->
+                    <execution>
+                        <id>npm run build</id>
+                        <goals>
+                            <goal>exec</goal>
+                        </goals>
+                        <phase>compile</phase>
+                        <configuration>
+                            <executable>npm</executable>
+                            <arguments>
+                                <argument>run</argument>
+                                <argument>build</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+```
 
 Don't forget to uncomment the modules in `website-parent` `pom.xml`!

@@ -1,0 +1,7 @@
+# Ignore Maven's build directory
+/target/
+
+# Ignore Maven-specific directories and files
+/maven-archiver/
+/maven-status/
+/surefire-reports/
